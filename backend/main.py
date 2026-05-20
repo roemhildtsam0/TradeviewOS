@@ -40,6 +40,9 @@ Base.metadata.create_all(bind=engine)
 
 
 def _migrate():
+    # Only needed for existing SQLite databases — Postgres starts fresh via create_all
+    if "postgresql" in str(engine.url):
+        return
     insp = sa_inspect(engine)
     tables = insp.get_table_names()
     with engine.connect() as conn:
