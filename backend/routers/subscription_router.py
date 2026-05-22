@@ -38,15 +38,18 @@ def _init_price_ids():
         # Find or create a Stripe product+price for this plan
         try:
             products = stripe.Product.list(limit=100)
-            for product in products.auto_paging_iter():
-                if product.metadata.get("sv_plan") == plan_key and product.active:
+            product_list = products.data if hasattr(products, "data") else list(products)
+            for product in product_list:
+                meta = product.metadata if hasattr(product, "metadata") else {}
+                if meta.get("sv_plan") == plan_key and product.active:
                     prices = stripe.Price.list(product=product.id, active=True, limit=1)
-                    if prices.data:
-                        _price_ids[plan_key] = prices.data[0].id
+                    price_list = prices.data if hasattr(prices, "data") else list(prices)
+                    if price_list:
+                        _price_ids[plan_key] = price_list[0].id
                         break
             if plan_key not in _price_ids:
                 product = stripe.Product.create(
-                    name=f"Stockview {plan['name']}",
+                    name=f"TradeviewAI {plan['name']}",
                     metadata={"sv_plan": plan_key},
                 )
                 price = stripe.Price.create(
