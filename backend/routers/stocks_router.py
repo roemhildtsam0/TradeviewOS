@@ -370,6 +370,74 @@ async def search_stocks(q: str = Query(..., min_length=1, max_length=50)):
     return {"results": results}
 
 
+AI_PICKS_TICKERS = [
+    "AAPL", "NVDA", "TSLA", "AMZN", "META", "MSFT", "GOOGL",
+    "AMD", "NFLX", "CRM", "CRWD", "PLTR", "COIN", "SHOP",
+    "SOFI", "INTC", "PYPL", "UBER", "SNOW", "MU",
+]
+
+
+def _compute_ai_projection(ticker: str) -> Optional[dict]:
+    try:
+        data = yf.download(ticker, period="1mo", interval="1d", progress=False, auto_adjust=True)
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.get_level_values(0)
+        data = data.dropna(subset=["Close"])
+        if len(data) < 5:
+            return None
+
+        closes = np.array([float(v) for v in data["Close"].tolist()])
+        n = len(closes)
+        x = np.arange(n, dtype=float)
+        x_mean, y_mean = x.mean(), closes.mean()
+        denom = float(((x - x_mean) ** 2).sum())
+        slope = float(((x - x_mean) * (closes - y_mean)).sum() / denom) if denom else 0.0
+        intercept = float(y_mean - slope * x_mean)
+        y_fit = slope * x + intercept
+        std = float(np.std(closes - y_fit))
+
+        target_proj = slope * (n + 9) + intercept
+        current = float(closes[-1])
+        cv = std / float(y_mean) if y_mean else 1.0
+        confidence = "high" if cv < 0.01 else "medium" if cv < 0.03 else "low"
+
+        name = ticker
+        for s in STOCK_DATABASE:
+            if s["ticker"] == ticker:
+                name = s["name"]
+                break
+
+        return {
+            "ticker": ticker,
+            "name": name,
+            "trend": "bullish" if slope > 0 else "bearish",
+            "confidence": confidence,
+            "current_price": round(current, 2),
+            "target_price": round(target_proj, 2),
+            "target_pct": round((target_proj / current - 1) * 100, 2) if current else 0,
+        }
+    except Exception:
+        return None
+
+
+@router.get("/ai-picks")
+async def get_ai_picks():
+    key = "ai-picks"
+    hit = cache.get(key)
+    if hit:
+        return hit
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        results = list(ex.map(_compute_ai_projection, AI_PICKS_TICKERS))
+
+    picks = [r for r in results if r is not None and r["confidence"] == "high"]
+    picks.sort(key=lambda x: abs(x["target_pct"]), reverse=True)
+
+    result = {"picks": picks}
+    cache.set(key, result, ttl=3600)
+    return result
+
+
 _PROJ_CONFIG = {
     "1d":  ("1d",  "5m",  24, 5 * 60),
     "1w":  ("5d",  "1h",  24, 3600),

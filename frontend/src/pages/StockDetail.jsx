@@ -72,14 +72,14 @@ export default function StockDetail() {
   }, [ticker])
 
   const fetchProjection = useCallback(async (p) => {
-    if (!isPaid || p === 'all') { setProjection(null); return }
+    if (p === 'all') { setProjection(null); return }
     try {
       const { data } = await api.projection(ticker, p)
       setProjection(data)
     } catch {
       setProjection(null)
     }
-  }, [ticker, isPaid])
+  }, [ticker])
 
   const fetchNews = useCallback(async () => {
     try {
@@ -269,6 +269,65 @@ export default function StockDetail() {
           </div>
         )}
       </div>
+
+      {/* AI Confidence Card */}
+      {!loading && period !== 'all' && (
+        <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.75rem' }}>
+            <Zap size={14} style={{ color: '#f59e0b' }} />
+            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-1)' }}>AI Confidence Analysis</span>
+            {isPaid && projection && (
+              <span style={{
+                marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 700,
+                padding: '2px 10px', borderRadius: 20,
+                ...(projection.confidence === 'high'
+                  ? { color: 'var(--green)', background: 'rgba(0,200,5,0.1)', border: '1px solid rgba(0,200,5,0.25)' }
+                  : projection.confidence === 'medium'
+                    ? { color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)' }
+                    : { color: 'var(--text-3)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }),
+              }}>
+                {projection.confidence?.charAt(0).toUpperCase() + projection.confidence?.slice(1)} Confidence
+              </span>
+            )}
+          </div>
+
+          {isPaid ? (
+            projection ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: '0.9rem', color: projection.trend === 'bullish' ? 'var(--green)' : 'var(--red)' }}>
+                  {projection.trend === 'bullish' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                  {projection.trend === 'bullish' ? 'Bullish Outlook' : 'Bearish Outlook'}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>
+                  30-day target:{' '}
+                  <strong style={{ color: projection.target_pct >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                    ${projection.target_price.toFixed(2)} ({projection.target_pct >= 0 ? '+' : ''}{projection.target_pct.toFixed(2)}%)
+                  </strong>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontStyle: 'italic' }}>
+                  {projection.trend === 'bullish'
+                    ? `Consistent upward momentum with ${projection.confidence} confidence in continued gains.`
+                    : `Sustained selling pressure with ${projection.confidence} confidence in further decline.`}
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>Analysis unavailable for this ticker.</p>
+            )
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: 'var(--text-2)' }}>
+                <Lock size={13} style={{ color: 'var(--accent)' }} />
+                AI confidence score and price target available on Intermediate and Commercial plans.
+              </div>
+              <Link to="/pricing" style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <button className="btn-primary" style={{ padding: '5px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Zap size={11} /> Upgrade
+                </button>
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>

@@ -43,6 +43,7 @@ export const api = {
   trending: () => client.get('/stocks/trending'),
   search: (q) => client.get(`/stocks/search?q=${encodeURIComponent(q)}`),
   projection: (ticker, period = '1mo') => client.get(`/stocks/projection/${ticker}?period=${period}`),
+  aiPicks: () => client.get('/stocks/ai-picks'),
 
   // News
   marketNews: () => client.get('/news/market'),
