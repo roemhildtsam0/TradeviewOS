@@ -116,7 +116,8 @@ async def security_headers(request: Request, call_next):
     # API-only CSP: only JSON responses, no HTML rendering
     response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
     # Remove server fingerprinting
-    response.headers.pop("server", None)
+    if "server" in response.headers:
+        del response.headers["server"]
     return response
 
 
