@@ -203,7 +203,7 @@ export default function Home() {
           <div className="scroll-x">
             {[0,1,2,3].map(i => <div key={i} className="skeleton" style={{ minWidth: 200, height: 110, borderRadius: 14 }} />)}
           </div>
-        ) : picks?.length === 0 ? (
+        ) : !picks || picks.length === 0 ? (
           <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.85rem' }}>
             No high-conviction picks right now — check back later as the model updates hourly.
           </div>
