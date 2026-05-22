@@ -120,6 +120,7 @@ class PredictionCreate(BaseModel):
     ticker: str
     direction: str        # "up" | "down"
     timeframe_days: int   # 1 | 7 | 30
+    confidence: Optional[str] = "medium"  # "low" | "medium" | "high"
     note: Optional[str] = None
     image_url: Optional[str] = None
 
@@ -142,6 +143,13 @@ class PredictionCreate(BaseModel):
             raise ValueError("Timeframe must be 1, 7, or 30 days")
         return v
 
+    @field_validator("confidence")
+    @classmethod
+    def confidence_valid(cls, v: Optional[str]) -> Optional[str]:
+        if v and v not in ("low", "medium", "high"):
+            raise ValueError("Confidence must be 'low', 'medium', or 'high'")
+        return v
+
     @field_validator("note")
     @classmethod
     def note_length(cls, v: Optional[str]) -> Optional[str]:
@@ -158,6 +166,7 @@ class PredictionOut(BaseModel):
     ticker: str
     direction: str
     timeframe_days: int
+    confidence: Optional[str] = None
     entry_price: float
     resolved_price: Optional[float]
     note: Optional[str] = None

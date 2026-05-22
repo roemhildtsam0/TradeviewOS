@@ -6,9 +6,10 @@ import PredictionCard from '../components/PredictionCard'
 import { api } from '../api/client'
 import useStore from '../store/useStore'
 
-const TIER_COLORS = { beginner: null, intermediate: 'var(--accent)', commercial: '#f59e0b' }
-const TIMEFRAMES  = [{ label: '1 Day', value: 1 }, { label: '7 Days', value: 7 }, { label: '30 Days', value: 30 }]
-const TABS        = ['Feed', 'Predictions']
+const TIER_COLORS  = { beginner: null, intermediate: 'var(--accent)', commercial: '#f59e0b' }
+const TIMEFRAMES   = [{ label: '1 Day', value: 1 }, { label: '7 Days', value: 7 }, { label: '30 Days', value: 30 }]
+const CONFIDENCES  = [{ label: 'Low', value: 'low' }, { label: 'Medium', value: 'medium' }, { label: 'High', value: 'high' }]
+const TABS         = ['Feed', 'Predictions']
 
 export default function Community() {
   const { user } = useStore()
@@ -38,12 +39,16 @@ export default function Community() {
   const [predTicker,    setPredTicker]    = useState('')
   const [predDir,       setPredDir]       = useState('up')
   const [predDays,      setPredDays]      = useState(7)
+  const [predConfidence, setPredConfidence] = useState('medium')
   const [predNote,      setPredNote]      = useState('')
   const [predImageFile, setPredImageFile] = useState(null)
   const [predImagePreview, setPredImagePreview] = useState(null)
   const [predSubmitting, setPredSubmitting] = useState(false)
   const [predError,     setPredError]     = useState('')
   const imageInputRef = useRef(null)
+
+  // Confidence filter (commercial only)
+  const [confFilter, setConfFilter] = useState(null)
 
   const PAGE = 20
 
@@ -62,16 +67,24 @@ export default function Community() {
     finally { setPostsLoading(false) }
   }
 
-  async function loadPreds(offset) {
+  async function loadPreds(offset, confidence = confFilter) {
     setPredsLoading(true)
     try {
-      const { data } = await api.getPredictions({ limit: PAGE, offset })
+      const params = { limit: PAGE, offset }
+      if (confidence) params.confidence = confidence
+      const { data } = await api.getPredictions(params)
       if (offset === 0) setPreds(data.predictions)
       else setPreds(p => [...p, ...data.predictions])
       setPredsTotal(data.total)
       setPredOffset(offset)
     } catch {}
     finally { setPredsLoading(false) }
+  }
+
+  function handleConfFilter(val) {
+    const next = confFilter === val ? null : val
+    setConfFilter(next)
+    loadPreds(0, next)
   }
 
   async function loadLeaderboard() {
@@ -130,6 +143,7 @@ export default function Community() {
         ticker: predTicker.trim().toUpperCase(),
         direction: predDir,
         timeframe_days: predDays,
+        confidence: predConfidence,
         note: predNote.trim() || null,
         image_url: imageUrl,
       })
@@ -299,6 +313,28 @@ export default function Community() {
                   </div>
                 </div>
 
+                {/* Confidence selector */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-3)', flexShrink: 0 }}>Confidence:</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {CONFIDENCES.map(c => {
+                      const active = predConfidence === c.value
+                      const colors = { low: 'rgba(255,255,255,0.15)', medium: '#f59e0b', high: 'var(--green)' }
+                      return (
+                        <button key={c.value} type="button" onClick={() => setPredConfidence(c.value)} style={{
+                          padding: '6px 12px', borderRadius: 8, fontSize: '0.78rem', cursor: 'pointer',
+                          fontWeight: active ? 700 : 400,
+                          border: `1px solid ${active ? colors[c.value] : 'var(--border)'}`,
+                          background: active ? `${colors[c.value]}22` : 'var(--surface)',
+                          color: active ? colors[c.value] : 'var(--text-2)',
+                        }}>
+                          {c.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
                 {/* Optional note */}
                 <textarea
                   value={predNote}
@@ -380,6 +416,30 @@ export default function Community() {
                 )}
               </form>
             </div>
+
+            {/* Confidence filter — commercial users only */}
+            {user?.subscription_tier === 'commercial' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-3)', flexShrink: 0 }}>Filter by confidence:</span>
+                {[{ label: 'All', value: null }, ...CONFIDENCES].map(c => {
+                  const active = confFilter === c.value
+                  const colors = { null: 'var(--accent)', low: 'rgba(200,200,200,0.8)', medium: '#f59e0b', high: 'var(--green)' }
+                  const col = colors[c.value] ?? 'var(--accent)'
+                  return (
+                    <button key={String(c.value)} type="button" onClick={() => handleConfFilter(c.value)} style={{
+                      padding: '5px 14px', borderRadius: 20, fontSize: '0.8rem', cursor: 'pointer',
+                      fontWeight: active ? 700 : 400,
+                      border: `1px solid ${active ? col : 'var(--border)'}`,
+                      background: active ? `${col}22` : 'var(--surface)',
+                      color: active ? col : 'var(--text-2)',
+                      transition: 'all 0.15s',
+                    }}>
+                      {c.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
             {/* Predictions feed */}
             {predsLoading && preds.length === 0

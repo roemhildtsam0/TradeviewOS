@@ -40,31 +40,37 @@ Base.metadata.create_all(bind=engine)
 
 
 def _migrate():
-    # Only needed for existing SQLite databases — Postgres starts fresh via create_all
-    if "postgresql" in str(engine.url):
-        return
+    is_pg = "postgresql" in str(engine.url)
     insp = sa_inspect(engine)
     tables = insp.get_table_names()
     with engine.connect() as conn:
-        if "users" in tables:
-            cols = {c["name"] for c in insp.get_columns("users")}
-            for col_name, col_type in [
-                ("subscription_tier",       "VARCHAR"),
-                ("stripe_customer_id",      "VARCHAR"),
-                ("stripe_subscription_id",  "VARCHAR"),
-                ("email_verified",          "BOOLEAN DEFAULT 0"),
-                ("failed_login_attempts",   "INTEGER DEFAULT 0"),
-                ("locked_until",            "DATETIME"),
-                ("token_version",           "INTEGER DEFAULT 0"),
-            ]:
-                if col_name not in cols:
-                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+        # SQLite-only: backfill columns added after initial schema
+        if not is_pg:
+            if "users" in tables:
+                cols = {c["name"] for c in insp.get_columns("users")}
+                for col_name, col_type in [
+                    ("subscription_tier",       "VARCHAR"),
+                    ("stripe_customer_id",      "VARCHAR"),
+                    ("stripe_subscription_id",  "VARCHAR"),
+                    ("email_verified",          "BOOLEAN DEFAULT 0"),
+                    ("failed_login_attempts",   "INTEGER DEFAULT 0"),
+                    ("locked_until",            "DATETIME"),
+                    ("token_version",           "INTEGER DEFAULT 0"),
+                ]:
+                    if col_name not in cols:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
 
+            if "predictions" in tables:
+                cols = {c["name"] for c in insp.get_columns("predictions")}
+                for col in ["note", "image_url"]:
+                    if col not in cols:
+                        conn.execute(text(f"ALTER TABLE predictions ADD COLUMN {col} VARCHAR"))
+
+        # All databases: add confidence column
         if "predictions" in tables:
             cols = {c["name"] for c in insp.get_columns("predictions")}
-            for col in ["note", "image_url"]:
-                if col not in cols:
-                    conn.execute(text(f"ALTER TABLE predictions ADD COLUMN {col} VARCHAR"))
+            if "confidence" not in cols:
+                conn.execute(text("ALTER TABLE predictions ADD COLUMN confidence VARCHAR"))
 
         conn.commit()
 

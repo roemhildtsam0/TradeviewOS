@@ -282,6 +282,7 @@ def get_predictions(
     limit: int = Query(20, le=50),
     offset: int = Query(0, ge=0),
     ticker: Optional[str] = None,
+    confidence: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     _resolve_pending(db)
@@ -289,6 +290,8 @@ def get_predictions(
     q = db.query(Prediction)
     if ticker:
         q = q.filter(Prediction.ticker == ticker.upper())
+    if confidence and confidence in ("low", "medium", "high"):
+        q = q.filter(Prediction.confidence == confidence)
     total = q.count()
     preds = q.order_by(Prediction.created_at.desc()).offset(offset).limit(limit).all()
     return {"predictions": preds, "total": total}
@@ -319,6 +322,7 @@ def create_prediction(
         ticker=body.ticker,
         direction=body.direction,
         timeframe_days=body.timeframe_days,
+        confidence=body.confidence or "medium",
         entry_price=entry_price,
         note=body.note,
         image_url=body.image_url,

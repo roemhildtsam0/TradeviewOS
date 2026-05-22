@@ -79,6 +79,7 @@ class Prediction(Base):
     resolved_price  = Column(Float, nullable=True)
     note            = Column(String, nullable=True)
     image_url       = Column(String, nullable=True)
+    confidence      = Column(String, nullable=True)    # "low" | "medium" | "high"
     resolved        = Column(Boolean, default=False)
     correct         = Column(Boolean, nullable=True)
     created_at      = Column(DateTime, default=datetime.utcnow)

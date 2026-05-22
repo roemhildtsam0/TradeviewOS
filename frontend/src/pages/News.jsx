@@ -17,6 +17,7 @@ export default function News() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('All')
   const [tickerArticles, setTickerArticles] = useState({})
+  const [sentimentFilter, setSentimentFilter] = useState('all')
 
   const fetchMarket = async () => {
     setLoading(true)
@@ -50,7 +51,10 @@ export default function News() {
     if (t !== 'All') fetchTicker(t)
   }
 
-  const displayed = filter === 'All' ? articles : (tickerArticles[filter] || [])
+  const baseArticles = filter === 'All' ? articles : (tickerArticles[filter] || [])
+  const displayed = (isPaid && sentimentFilter !== 'all')
+    ? baseArticles.filter(a => a.sentiment === sentimentFilter)
+    : baseArticles
 
   return (
     <div className="page fade-up">
@@ -89,8 +93,8 @@ export default function News() {
         </div>
       )}
 
-      {/* Filter pills */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      {/* Ticker filter pills */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: '0.75rem', flexWrap: 'wrap' }}>
         {TICKERS.map((t) => (
           <button
             key={t}
@@ -109,6 +113,37 @@ export default function News() {
           </button>
         ))}
       </div>
+
+      {/* Sentiment filter pills — paid users only */}
+      {isPaid && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-3)', flexShrink: 0 }}>Sentiment:</span>
+          {[
+            { label: 'All',     value: 'all',     color: 'var(--accent)' },
+            { label: 'Bullish', value: 'bullish',  color: 'var(--green)' },
+            { label: 'Bearish', value: 'bearish',  color: 'var(--red)'   },
+            { label: 'Neutral', value: 'neutral',  color: 'var(--text-2)'},
+          ].map(s => {
+            const active = sentimentFilter === s.value
+            return (
+              <button
+                key={s.value}
+                onClick={() => setSentimentFilter(s.value)}
+                style={{
+                  padding: '4px 14px', borderRadius: 20, fontSize: '0.8rem', cursor: 'pointer',
+                  fontWeight: active ? 700 : 400,
+                  border: `1px solid ${active ? s.color : 'var(--border)'}`,
+                  background: active ? `${s.color}22` : 'var(--surface)',
+                  color: active ? s.color : 'var(--text-2)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {s.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {loading

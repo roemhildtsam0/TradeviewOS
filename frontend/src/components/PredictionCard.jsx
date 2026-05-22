@@ -98,6 +98,24 @@ export default function PredictionCard({ pred }) {
         <span style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>
           in <strong style={{ color: 'var(--text-1)' }}>{pred.timeframe_days}</strong> day{pred.timeframe_days !== 1 ? 's' : ''}
         </span>
+
+        {pred.confidence && (() => {
+          const cfg = {
+            low:    { label: 'Low Confidence',    color: 'var(--text-3)',  bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' },
+            medium: { label: 'Medium Confidence', color: '#f59e0b',        bg: 'rgba(245,158,11,0.1)',   border: 'rgba(245,158,11,0.25)' },
+            high:   { label: 'High Confidence',   color: 'var(--green)',   bg: 'rgba(0,200,5,0.08)',     border: 'rgba(0,200,5,0.2)'     },
+          }[pred.confidence]
+          if (!cfg) return null
+          return (
+            <span style={{
+              fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.02em',
+              color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.border}`,
+              borderRadius: 6, padding: '2px 8px',
+            }}>
+              {cfg.label}
+            </span>
+          )
+        })()}
       </div>
 
       {/* Price row */}
